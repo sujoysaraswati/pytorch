@@ -672,6 +672,8 @@ struct PythonPrintImpl {
       }
     } else if (const auto interfaceType = type->cast<InterfaceType>()) {
       registerDependency(interfaceType);
+    } else if (const auto enumType = type->cast<EnumType>()) {
+      registerDependency(enumType);
     }
     for (const auto& containedType : type->containedTypes()) {
       registerClassDependencies(containedType);
@@ -1411,6 +1413,15 @@ struct PythonPrintImpl {
                 << ":\n";
           indent();
           body_ << "  pass\n";
+        }
+      }
+    } else if (auto enumType = type->cast<EnumType>()) {
+      body_ << "class " << enumType->qualifiedClassName().name() <<"(Enum):\n";
+      {
+        auto guard = WithIndented();
+        for (const auto& name_value : enumType->enumNamesValues()) {
+          indent();
+          body_ << name_value.first << " = " << name_value.second;
         }
       }
     } else {

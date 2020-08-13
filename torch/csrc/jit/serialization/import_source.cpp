@@ -8,6 +8,7 @@
 #include <torch/custom_class.h>
 
 #include <regex>
+#include "jit/python/python_sugared_value.h"
 
 namespace torch {
 namespace jit {
@@ -256,6 +257,8 @@ struct SourceImporterImpl : public Resolver,
     } else if (superclass_name == "ModuleInterface") {
       cu_->define_interface(
           qualified_name, class_def, shared_from_this(), /*is_module=*/true);
+    } else if (superclass_name == "Enum") {
+      importEnum(qualified_name, class_def);
     } else {
       throw ErrorReport(class_def.range())
           << "Torchscript does not support class inheritance.";
@@ -475,6 +478,49 @@ struct SourceImporterImpl : public Resolver,
     cu_->define(qualified_classname, methods, resolvers, &self);
   }
 
+  void importEnum(
+      const QualifiedName& qualified_name,
+      const ClassDef& enum_def) {
+    ScriptTypeParser type_parser(shared_from_this());
+    std::vector<std::pair<std::string, IValue>> names_values;
+
+    TypePtr value_type = nullptr;
+    for (const auto& statement : enum_def.body()) {
+      if (statement.kind() != TK_ASSIGN) {
+        throw ErrorReport(statement.range())
+            << "Unexpected statement in Enum class body: "
+               "only enum attribute definitions are currently supported.";
+      }
+
+      const auto assign = Assign(statement);
+      auto name = Var(assign.lhs()).name().name();
+      auto type = type_parser.parseTypeFromExpr(assign.type().get());
+      if (value_type != nullptr && value_type != type) {
+        throw ErrorReport(statement.range())
+            << "Enum class with varying value types are not supported.";
+      }
+
+      IValue ivalue;
+      auto rhs = assign.rhs();
+      switch (rhs.kind()) {
+        case TK_STRINGLITERAL:
+          ivalue = IValue(StringLiteral(rhs).text());
+        case TK_CONST:
+          auto numeric_const = Const(rhs);
+          if (numeric_const.isFloatingPoint()) {
+            ivalue = IValue(numeric_const.asFloatingPoint());
+          } else if (numeric_const.isIntegral()) {
+            ivalue = IValue(numeric_const.asIntegral());
+          }
+      }
+
+      names_values.emplace_back(std::make_pair(name, ivalue));
+    }
+
+    auto enum_type = EnumType::create(qualified_name, value_type, names_values, cu_);
+    cu_->register_type(enum_type);
+  }
+
   void importNamedTuple(
       const QualifiedName& qualified_name,
       const ClassDef& named_tuple_def) {
@@ -552,6 +598,22 @@ std::shared_ptr<SugaredValue> ClassNamespaceValue::attr(
       return std::make_shared<ClassValue>(classType);
     } else if (auto tupleType = serializable_type->cast<TupleType>()) {
       return std::make_shared<NamedTupleConstructor>(tupleType);
+    } else if (auto enumType = serializable_type->cast<EnumType>()) {
+      std::map<string, SugaredValuePtr> sugared_enum_values;
+      auto sugared_enum_values_list = c10::impl::GenericList(enumType);
+      for (const auto& name_value : enumType->enumNamesValues()) {
+        auto enum_holder = c10::make_intrusive<ivalue::EnumHolder>(
+            enumType, name_value.first, name_value.second);
+        auto simple_enum_value = std::make_shared<SimpleValue>(
+            m.graph()->insertConstant(IValue(enum_holder), loc));
+        sugared_enum_values.insert(
+            std::make_pair(name_value.first, simple_enum_value));
+        sugared_enum_values_list.push_back(name_value.second);
+      }
+      auto enum_values_list_constant = std::make_shared<SimpleValue>(
+          m.graph()->insertConstant(sugared_enum_values_list, loc));
+      return std::make_shared<SugaredEnumClass>(
+          sugared_enum_values, enum_values_list_constant, enumType);
     }
   }
 
