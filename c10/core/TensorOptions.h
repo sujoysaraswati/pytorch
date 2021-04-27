@@ -640,6 +640,8 @@ inline DispatchKey computeDispatchKey(c10::optional<ScalarType> dtype, c10::opti
             return DispatchKey::Metal;
           case DeviceType::Meta:
             return DispatchKey::Meta;
+          case DeviceType::HABANA:
+            return DispatchKey::HABANA;
           default:
             TORCH_CHECK_NOT_IMPLEMENTED(false, "Unsupported device type for dense layout: ", device_.type());
         }
@@ -728,6 +730,9 @@ inline DeviceType dispatchKeyToDeviceType(DispatchKey dispatch_key) {
     case DispatchKey::MLC:
     case DispatchKey::AutogradMLC:
       return DeviceType::MLC;
+    case DispatchKey::HABANA:
+    case DispatchKey::AutogradHABANA:
+      return DeviceType::HABANA;
 
     // stuff that isn't real
     case DispatchKey::MKLDNN:

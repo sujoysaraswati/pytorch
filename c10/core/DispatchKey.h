@@ -66,6 +66,7 @@ enum class DispatchKey : uint8_t {
   Vulkan,
   Metal,
   XPU, // For out of tree Intel's heterogeneous computing plug-in
+  HABANA, // Habana
 
   // These are Caffe2 device types which we grandfathered into
   // DispatchKey.
@@ -215,6 +216,7 @@ enum class DispatchKey : uint8_t {
   AutogradXLA,
   AutogradXPU,
   AutogradMLC,
+  AutogradHABANA,
   AutogradNestedTensor, // lives out of tree at https://github.com/pytorch/nestedtensor
   // Here are some reserved pre-autograd keys for user-defined backends, see
   // Note [Private use DispatchKey]

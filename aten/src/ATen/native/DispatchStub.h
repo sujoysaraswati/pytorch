@@ -106,10 +106,12 @@ struct TORCH_API DispatchStubImpl {
     std::atomic<void*> cpu_dispatch_ptr;
     void* cuda_dispatch_ptr;
     void* hip_dispatch_ptr;
+    void* habana_dispatch_ptr;
   #else
     std::atomic<void*> cpu_dispatch_ptr{nullptr};
     void* cuda_dispatch_ptr = nullptr;
     void* hip_dispatch_ptr = nullptr;
+    void* habana_dispatch_ptr = nullptr;
   #endif
 };
 
@@ -154,6 +156,10 @@ public:
     impl.hip_dispatch_ptr = reinterpret_cast<void*>(fn_ptr);
   }
 
+  void set_habana_dispatch_ptr(FnPtr fn_ptr) {
+    impl.habana_dispatch_ptr = reinterpret_cast<void*>(fn_ptr);
+  }
+
   static FnPtr DEFAULT;
 #ifdef HAVE_AVX_CPU_DEFINITION
   static FnPtr AVX;
@@ -183,6 +189,14 @@ struct RegisterHIPDispatch {
     stub.set_cuda_dispatch_ptr(value);
   }
 };
+
+template <typename FnPtr, typename T>
+struct RegisterHABANADispatch {
+  RegisterHABANADispatch(DispatchStub<FnPtr, T>& stub, FnPtr value) {
+    stub.set_habana_dispatch_ptr(value);
+  }
+};
+
 } // anonymous namespace
 
 // Compiler will complain if you put things like std::tuple<Tensor, Tensor> in
@@ -232,6 +246,9 @@ struct RegisterHIPDispatch {
 
 #define REGISTER_HIP_DISPATCH(name, fn) \
   static RegisterHIPDispatch<decltype(fn), struct name> name ## __register(name, fn);
+
+#define REGISTER_HABANA_DISPATCH(name, fn) \
+  static RegisterHABANADispatch<decltype(fn), struct name> name ## __register(name, fn);
 
 // NB: This macro must be used in an actual 'cu' file; if you try using
 // it from a 'cpp' file it will not work!

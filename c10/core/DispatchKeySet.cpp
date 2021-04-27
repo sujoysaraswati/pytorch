@@ -16,6 +16,7 @@ constexpr DispatchKeySet backend_dispatch_keyset = autogradother_backends |
         DispatchKey::PrivateUse2,
         DispatchKey::PrivateUse3,
         DispatchKey::MLC,
+        DispatchKey::HABANA,
         DispatchKey::Meta,
     });
 
@@ -53,6 +54,8 @@ DispatchKeySet getBackendKeySetFromAutograd(DispatchKey t) {
       return DispatchKeySet(DispatchKey::XLA);
     case DispatchKey::AutogradMLC:
       return DispatchKeySet(DispatchKey::MLC);
+    case DispatchKey::AutogradHABANA:
+      return DispatchKeySet(DispatchKey::HABANA);
     case DispatchKey::AutogradNestedTensor:
       return DispatchKeySet(DispatchKey::NestedTensor);
     case DispatchKey::AutogradXPU:

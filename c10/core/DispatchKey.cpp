@@ -24,6 +24,8 @@ const char* toString(DispatchKey t) {
       return "XLA";
     case DispatchKey::MLC:
       return "MLC";
+    case DispatchKey::HABANA:
+      return "HABANA";
     case DispatchKey::Vulkan:
       return "Vulkan";
     case DispatchKey::Metal:
@@ -87,6 +89,8 @@ const char* toString(DispatchKey t) {
       return "AutogradXLA";
     case DispatchKey::AutogradMLC:
       return "AutogradMLC";
+    case DispatchKey::AutogradHABANA:
+      return "AutogradHABANA";
     case DispatchKey::AutogradNestedTensor:
       return "AutogradNestedTensor";
     case DispatchKey::AutogradPrivateUse1:
@@ -154,6 +158,8 @@ DispatchKey getAutogradKeyFromBackend(DispatchKey t) {
       return DispatchKey::AutogradXLA;
     case DispatchKey::MLC:
       return DispatchKey::AutogradMLC;
+    case DispatchKey::HABANA:
+      return DispatchKey::AutogradHABANA;
     case DispatchKey::NestedTensor:
       return DispatchKey::AutogradNestedTensor;
     case DispatchKey::PrivateUse1:

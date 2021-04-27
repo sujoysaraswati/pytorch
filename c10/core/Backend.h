@@ -48,6 +48,7 @@ enum class Backend {
   Undefined,
   MkldnnCPU,
   MLC,
+  HABANA,
   NumOptions
 };
 
@@ -92,6 +93,8 @@ static inline Backend dispatchKeyToBackend(DispatchKey t) {
     return Backend::SparseXPU;
   } else if (t == DispatchKey::QuantizedXPU) {
     return Backend::QuantizedXPU;
+  } else if (t == DispatchKey::HABANA || t == DispatchKey::AutogradHABANA) {
+    return Backend::HABANA;
   } else if (t == DispatchKey::Undefined) {
     return Backend::Undefined;
   } else {
@@ -141,6 +144,8 @@ static inline DispatchKey backendToDispatchKey(Backend b) {
       return DispatchKey::Undefined;
     case Backend::MLC:
       return DispatchKey::MLC;
+    case Backend::HABANA:
+      return DispatchKey::HABANA;
     default:
       throw std::runtime_error("Unknown backend");
   }
@@ -185,6 +190,8 @@ static inline DeviceType backendToDeviceType(Backend b) {
       return DeviceType::Metal;
     case Backend::MLC:
       return DeviceType::MLC;
+    case Backend::HABANA:
+      return DeviceType::HABANA;
     case Backend::Undefined:
       TORCH_CHECK(false, "Undefined backend is not a valid device type");
     default:
@@ -235,6 +242,8 @@ static inline const char* toString(Backend b) {
       return "QuantizedCUDA";
     case Backend::QuantizedXPU:
       return "QuantizedXPU";
+    case Backend::HABANA:
+      return "HABANA";
     default:
       return "UNKNOWN_BACKEND";
   }
