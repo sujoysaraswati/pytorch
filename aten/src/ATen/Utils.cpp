@@ -1,10 +1,10 @@
 #include <ATen/Context.h>
-#include <ATen/detail/CUDAHooksInterface.h>
 #include <ATen/Dispatch.h>
 #include <ATen/Functions.h>
 #include <ATen/Utils.h>
+#include <ATen/detail/CUDAHooksInterface.h>
+#include <ATen/detail/HPUHooksInterface.h>
 #include <c10/util/accumulate.h>
-
 
 // NOLINTNEXTLINE(modernize-deprecated-headers)
 #include <stdarg.h>
@@ -39,9 +39,13 @@ Tensor empty_cpu(
 
   bool pin_memory = pinned_memory_or_default(pin_memory_opt);
   // NOLINTNEXTLINE(cppcoreguidelines-init-variables)
-  c10::Allocator* allocator;
+  c10::Allocator* allocator = nullptr;
   if (pin_memory) {
-    allocator = detail::getCUDAHooks().getPinnedMemoryAllocator();
+    if (detail::getCUDAHooks().hasCUDA()) {
+      allocator = detail::getCUDAHooks().getPinnedMemoryAllocator();
+    } else if (detail::getHPUHooks().hasHPU()) {
+      allocator = detail::getHPUHooks().getPinnedMemoryAllocator();
+    }
   } else {
     allocator = at::getCPUAllocator();
   }

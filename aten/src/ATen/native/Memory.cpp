@@ -3,14 +3,19 @@
 #include <ATen/NativeFunctions.h>
 #include <ATen/TensorUtils.h>
 #include <ATen/detail/CUDAHooksInterface.h>
-#include <c10/util/Exception.h>
+#include <ATen/detail/HPUHooksInterface.h>
 #include <c10/core/Storage.h>
+#include <c10/util/Exception.h>
 
 namespace at {
 namespace native {
 
 bool is_pinned(const Tensor& self) {
-  return detail::getCUDAHooks().isPinnedPtr(self.storage().data());
+  auto pinned = detail::getCUDAHooks().isPinnedPtr(self.storage().data());
+  if (detail::getHPUHooks().hasHPU()) {
+    pinned = detail::getHPUHooks().isPinnedPtr(self.storage().data());
+  }
+  return pinned;
 }
 
 Tensor pin_memory(const Tensor& self) {
@@ -20,7 +25,18 @@ Tensor pin_memory(const Tensor& self) {
   if (self.is_pinned()) {
     return self;
   }
-  auto* allocator = detail::getCUDAHooks().getPinnedMemoryAllocator();
+
+  c10::Allocator* allocator = nullptr;
+  if (detail::getCUDAHooks().hasCUDA()) {
+    allocator = detail::getCUDAHooks().getPinnedMemoryAllocator();
+  } else if (detail::getHPUHooks().hasHPU()) {
+    allocator = detail::getHPUHooks().getPinnedMemoryAllocator();
+  }
+
+  if (!allocator) {
+    AT_ERROR("cannot pin '", self.toString());
+  }
+
   auto storage = Storage(
       Storage::use_byte_size_t(),
       detail::computeStorageNbytes(
